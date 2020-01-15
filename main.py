@@ -1,8 +1,9 @@
 import numpy as np
 
 
-fobj = open('Daten/Waldpunktwolke_short.txt', "r")
-print fobj
+
+fobj = open('/run/media/csav9726/ANDREAS/Python/Projekt/15.01/kronendach/Daten/Waldpunktwolke_short.txt', "r")
+#print fobj
 
 pointlist = []
 
@@ -17,6 +18,25 @@ fobj.close
 
 pointarray = np.array(pointlist) 
 pointarray = pointarray.astype(float)  
+
+
+#Neuer Array ohne Gebauede und Boden
+
+
+vegetationslist = []
+
+for i in pointarray:
+        
+        if i[6] == 3 or i[6] ==4 or i[6] ==5:
+                vegetationslist.append(i)
+                
+
+#print vegetationslist
+vegetationsarray = np.array(vegetationslist)
+print vegetationsarray
+        
+
+
 
 #print pointlist
 print "--------"
@@ -42,9 +62,9 @@ print ncols
 #create Extent Raster
 array = np.empty(nrows,ncols)
 
-for x in np.arange(xmin,xmin+ncols):
-    print x
-    for y in np.arange(ymin,ymin+nrows):
-        print y
+# for x in np.arange(xmin,xmin+ncols):
+#     print x
+#     for y in np.arange(ymin,ymin+nrows):
+#         print y
         
 

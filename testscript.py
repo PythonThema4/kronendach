@@ -6,7 +6,7 @@
 #-------------------------------
 
 # Print iterations progress
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '*', printEnd = "\r"):
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -73,7 +73,7 @@ for i in pointarray:
     if i[6] == 2:
         bodenlist.append(i)
 
-vegetationsarray = np.array(vegetationslist)        
+vegarray = np.array(vegetationslist)        
 bodenarray = np.array(bodenlist)
 
 
@@ -98,8 +98,20 @@ ymin=minvals[1]
 nrows= int(np.ceil(ymax-ymin))
 ncols= int(np.ceil(xmax-xmin))
 
-bodenout_array = np.empty((nrows,ncols))
-bodenout_array.fill(0)
+bodencountout_array = np.empty((nrows,ncols))
+bodencountout_array.fill(0)
+
+bodenhoehenout_array = np.empty((nrows,ncols))
+bodenhoehenout_array.fill(0)
+
+vegcountout_array = np.empty((nrows,ncols))
+vegcountout_array.fill(0)
+
+veghoeheout_array = np.empty((nrows,ncols))
+veghoeheout_array.fill(0)
+
+vegstdout_array = np.empty((nrows,ncols))
+vegstdout_array.fill(0)
 
 
 # %%
@@ -110,6 +122,7 @@ bodencount = 0
 countlist =[]
 arraycount_x = 0
 arraycount_y = 0
+bodenhoehenlist = []
 
 print("Bodenpunkte zuordnen:")
 printProgressBar(0, len(np.arange(ymax,ymax-nrows,-1)), prefix = 'Progress:', suffix = 'Complete', length = 50)
@@ -125,14 +138,63 @@ for y in np.arange(ymax,ymax-nrows,-1):
         for i in bodenarray:
             if x <= i[0] < x+1 and y >= i[1] > y-1:
                 bodencount+=1
-        bodenout_array[arraycount_y][arraycount_x]=bodencount
+                bodenhoehenlist.append(i[2])
+        bodencountout_array[arraycount_y][arraycount_x]=bodencount
+        bodenhoehenout_array[arraycount_y][arraycount_x]=np.mean(bodenhoehenlist)
         arraycount_x+=1     
         bodencount=0
+        bodenhoehenlist=[]
     arraycount_x=0
     arraycount_y+=1
-    # print("xRichtungEnde")    
+    # print("xRichtungEnde")
+    bodenhoehenout_array[np.isnan(bodenhoehenout_array)] = 0
 
 
+
+
+# %%
+#----------------------------------
+#Mittlere Hoehe der VegPunkte:
+#----------------------------------
+vegcount = 0
+countlist =[]
+arraycount_x = 0
+arraycount_y = 0
+veghoehenlist = []
+
+print("VegPunkte zuordnen:")
+printProgressBar(0, len(np.arange(ymax,ymax-nrows,-1)), prefix = 'Progress:', suffix = 'Complete', length = 50)
+j=0
+for y in np.arange(ymax,ymax-nrows,-1):
+    printProgressBar(j+1, len(np.arange(ymax,ymax-nrows,-1)), prefix = 'Progress:', suffix = 'Complete', length = 50)
+    j+=1
+    # print("yRichtung:",y)
+    # print("ArraypositionY:",arraycount_y)
+    for x in np.arange(xmin,xmin+ncols,1):
+        # print("xRichtung:",x)
+        # print("ArraypositionX:",arraycount_x)
+        for i in vegarray:
+            if x <= i[0] < x+1 and y >= i[1] > y-1: #Hier sind wir in der jeweiligen Zelle
+                veghoehenlist.append(i[2])
+                vegcount+=1
+
+        veghoeheout_array[arraycount_y][arraycount_x]=np.mean(veghoehenlist) #Mittlere Hoehe der VegPunkte
+        vegstdout_array[arraycount_y][arraycount_x]=np.std(veghoehenlist) #Standardabweichung der VegPunkte
+        vegcountout_array[arraycount_y][arraycount_x]=vegcount #Anzahl der Vegetationspunkte in Zelle
+        arraycount_x+=1     
+        vegcount=0
+        veghoehenlist=[]
+    arraycount_x=0
+    arraycount_y+=1
+    # print("xRichtungEnde") 
+
+
+# %%
+#-------------------------------
+#Tatsaechliche VegHoehe:
+#-------------------------------
+vegtathoehe_array = np.empty((nrows,ncols))
+vegtathoehe_array = veghoeheout_array - bodenhoehenout_array
 
 
 # %%
@@ -140,8 +202,10 @@ for y in np.arange(ymax,ymax-nrows,-1):
 #OutRaster schreiben:
 #-------------------------------
 
+
+#Boden Raster
 driver = gdal.GetDriverByName("GTiff")
-dataset = driver.Create("Bodenpunkte_5000.tif", ncols, nrows, 1, gdal.GDT_Float32)
+dataset = driver.Create("Export/BodenCount_1000.tif", ncols, nrows, 1, gdal.GDT_Float32)
 dataset.SetGeoTransform((xmin,1,0,ymax,0,-1))
 
 #Koordinatensystem definieren:
@@ -152,11 +216,82 @@ dest_wkt = dstSRS.ExportToWkt()
 dataset.SetProjection(dest_wkt)
 
 #Raster ausgeben:
-bandout = dataset.GetRasterBand(1).WriteArray(bodenout_array)
+bandout = dataset.GetRasterBand(1).WriteArray(bodencountout_array)
+dataset.FlushCache()
+
+
+# %%
+#Bodenhoehen Raster
+driver = gdal.GetDriverByName("GTiff")
+dataset = driver.Create("Export/BodenHoehen_1000.tif", ncols, nrows, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform((xmin,1,0,ymax,0,-1))
+
+#Koordinatensystem definieren:
+dstSRS = osr.SpatialReference()
+dstSRS.ImportFromEPSG(32632)
+dest_wkt = dstSRS.ExportToWkt()
+
+dataset.SetProjection(dest_wkt)
+
+#Raster ausgeben:
+bandout = dataset.GetRasterBand(1).WriteArray(bodenhoehenout_array)
 dataset.FlushCache()
 
 
 # %%
 
+#Vegetation Zaehler Raster
+driver = gdal.GetDriverByName("GTiff")
+dataset = driver.Create("Export/VegCount_1000.tif", ncols, nrows, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform((xmin,1,0,ymax,0,-1))
+
+#Koordinatensystem definieren:
+dstSRS = osr.SpatialReference()
+dstSRS.ImportFromEPSG(32632)
+dest_wkt = dstSRS.ExportToWkt()
+
+dataset.SetProjection(dest_wkt)
+
+#Raster ausgeben:
+bandout = dataset.GetRasterBand(1).WriteArray(vegcountout_array)
+dataset.FlushCache()
+
+
+# %%
+
+#Vegetation Mittlere Hoehe Raster
+driver = gdal.GetDriverByName("GTiff")
+dataset = driver.Create("Export/VegHoehen_1000.tif", ncols, nrows, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform((xmin,1,0,ymax,0,-1))
+
+#Koordinatensystem definieren:
+dstSRS = osr.SpatialReference()
+dstSRS.ImportFromEPSG(32632)
+dest_wkt = dstSRS.ExportToWkt()
+
+dataset.SetProjection(dest_wkt)
+
+#Raster ausgeben:
+bandout = dataset.GetRasterBand(1).WriteArray(vegtathoehe_array)
+dataset.FlushCache()
+
+
+# %%
+
+#Vegetation Standardabweichung Hoehe Raster
+driver = gdal.GetDriverByName("GTiff")
+dataset = driver.Create("Export/VegStd_1000.tif", ncols, nrows, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform((xmin,1,0,ymax,0,-1))
+
+#Koordinatensystem definieren:
+dstSRS = osr.SpatialReference()
+dstSRS.ImportFromEPSG(32632)
+dest_wkt = dstSRS.ExportToWkt()
+
+dataset.SetProjection(dest_wkt)
+
+#Raster ausgeben:
+bandout = dataset.GetRasterBand(1).WriteArray(vegstdout_array)
+dataset.FlushCache()
 
 

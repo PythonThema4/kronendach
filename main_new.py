@@ -39,7 +39,7 @@ import statistics
 #-------------------------------
 #File einlesen:
 #-------------------------------
-fobj = open('Daten/Waldpunktwolke_1000.txt', "r") #Input File
+fobj = open('Daten/Waldpunktwolke_5000.txt', "r") #Input File
 
 pointlist = []
 

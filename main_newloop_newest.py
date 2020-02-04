@@ -37,6 +37,7 @@ from osgeo import gdal
 from osgeo import osr
 import time
 import statistics 
+from scipy import interpolate
 
 
 #-------------------------------
@@ -162,7 +163,27 @@ for i in bodenarray:
     else:
         bodenhoehen_array[gy][gx] = np.mean([bodenhoehen_array[gy][gx],i[2]])
 
+if bodencountout_array[gy][gx] == 0:
+    bodencountout_array[gy][gx] +=1
 
+
+##### Boden interpolation
+##Dokumention : "https://modelhelptokyo.wordpress.com/2017/10/25/how-to-interpolate-missing-values-2d-python/"
+a = np.arange(0, ncols)
+b = np.arange(0, nrows)
+#mask invalid values
+array = np.ma.masked_invalid(bodenhoehen_array)
+xx, yy = np.meshgrid(a, b)
+#get only the valid values
+x1 = xx[~array.mask]
+y1 = yy[~array.mask]
+newarr = array[~array.mask]
+
+GD1 = interpolate.griddata((x1, y1), newarr.ravel(),
+                          (xx, yy),
+                             method='cubic')
+
+print (GD1)
 # %%
 #----------------------------------
 #Mittlere Hoehe der VegPunkte:
@@ -176,38 +197,28 @@ for i in vegarray:
     x=i[0]
     y=i[1]
     height = i[2]
-    #print(height-bodenhoehen_array[gy][gx])
+    #print(height-GD1[gy][gx])
     gx = int((x -xmin)/Cellsize)
     gy = int((y -ymax)/-Cellsize)
     vegcount_array[gy,gx]+=1
-    if height-bodenhoehen_array[gy][gx] >= 2:
+    if height-GD1[gy][gx] >= 2:
         vegcount_higher2_array[gy,gx]+=1
         veghigher2_count_array[gy][gx]+=1
         if np.isnan(veghigher2_count_array[gy][gx]) == True:
-            veghigher2_hoehen_array[gy][gx] = (i[2]-bodenhoehen_array[gy][gx])
+            veghigher2_hoehen_array[gy][gx] = (i[2]-GD1[gy][gx])
         else:
-            veghigher2_hoehen_array[gy][gx] = np.mean([veghigher2_hoehen_array[gy][gx],(i[2]-bodenhoehen_array[gy][gx])])
+            veghigher2_hoehen_array[gy][gx] = np.mean([veghigher2_hoehen_array[gy][gx],(i[2]-GD1[gy][gx])])
 
-
-#Alternativ Code 
-#         veghigher2_hoehen_array[gy][gx] = (i[2]-bodenhoehen_array[gy][gx])
-# veghigher2_hoehen_array[gy][gx] = np.mean([veghigher2_hoehen_array[gy][gx],i[2]])
-# # # Zwei obere Zeilen = Vereinfachung der unteren Schleife - bei Boden auch noch zu machen            
-  
-
-
-
-    # #print("xRichtungEnde") 
-    # #vegstdout_array[np.isnan(vegstdout_array)] = 0
-    # #veghoeheout_array[np.isnan(veghoeheout_array)] = 0
 
 
 # %%
 #-------------------------------
 #Index anzahl veg zu bodenpunkte veg/(veg-boden):
 #-------------------------------
+
 indexarray1 = np.empty((nrows,ncols))
 indexarray1 = (vegcount_array/(vegcount_array+bodencountout_array))
+
 
 
 # %%
@@ -258,6 +269,22 @@ dataset.SetProjection(dest_wkt)
 bandout = dataset.GetRasterBand(1).WriteArray(bodenhoehen_array)
 dataset.FlushCache()
 
+#%%
+# #Bodenhoehen Raster
+driver = gdal.GetDriverByName("GTiff")
+dataset = driver.Create("Export/BodenInterpolation_%s.tif" % (InputSize), ncols, nrows, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform((xmin,1,0,ymax,0,-1))
+
+# #Koordinatensystem definieren:
+dstSRS = osr.SpatialReference()
+dstSRS.ImportFromEPSG(32632)
+dest_wkt = dstSRS.ExportToWkt()
+
+dataset.SetProjection(dest_wkt)
+
+# #Raster ausgeben:
+bandout = dataset.GetRasterBand(1).WriteArray(GD1)
+dataset.FlushCache()
 
 # %%
 

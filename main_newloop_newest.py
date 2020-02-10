@@ -43,8 +43,8 @@ from scipy import interpolate
 #-------------------------------
 #File einlesen:
 #-------------------------------
-fobj = open('Daten/Waldpunktwolke_5000.txt', "r") #Input File
-InputSize = "5000"
+fobj = open('Daten/Waldpunktwolke.txt', "r") #Input File
+InputSize = "full"
 
 pointlist = []
 
@@ -126,6 +126,9 @@ vegcount_array.fill(0)
 vegcount_higher2_array = np.empty((nrows,ncols))
 vegcount_higher2_array.fill(0)
 
+veghohen_arry= np.empty((nrows,ncols))
+veghohen_arry[:] = np.NaN
+
 veghigher2_hoehen_array  = np.empty((nrows,ncols))
 veghigher2_hoehen_array[:] = np.NaN
 
@@ -201,6 +204,7 @@ for i in vegarray:
     gx = int((x -xmin)/Cellsize)
     gy = int((y -ymax)/-Cellsize)
     vegcount_array[gy,gx]+=1
+    veghohen_arry[gy,gx] = (i[2]-GD1[gy][gx])
     if height-GD1[gy][gx] >= 2:
         vegcount_higher2_array[gy,gx]+=1
         veghigher2_count_array[gy][gx]+=1
@@ -215,7 +219,7 @@ for i in vegarray:
 #-------------------------------
 #Index anzahl veg zu bodenpunkte veg/(veg-boden):
 #-------------------------------
-
+np.seterr(divide='ignore', invalid='ignore')
 indexarray1 = np.empty((nrows,ncols))
 indexarray1 = (vegcount_array/(vegcount_array+bodencountout_array))
 
@@ -225,6 +229,7 @@ indexarray1 = (vegcount_array/(vegcount_array+bodencountout_array))
 #-------------------------------
 #Index anzahl veg ueber 2 m zu bodenpunkte veg/(veg-boden):
 #-------------------------------
+np.seterr(divide='ignore', invalid='ignore')
 indexhoehen2m = np.empty((nrows,ncols))
 indexhoehen2m = (vegcount_higher2_array/(vegcount_higher2_array+bodencountout_array))
 
@@ -320,7 +325,7 @@ dest_wkt = dstSRS.ExportToWkt()
 dataset.SetProjection(dest_wkt)
 
 # #Raster ausgeben:
-bandout = dataset.GetRasterBand(1).WriteArray(veghigher2_hoehen_array)
+bandout = dataset.GetRasterBand(1).WriteArray(veghohen_arry)
 dataset.FlushCache()
 
 print ("done1")

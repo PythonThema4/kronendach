@@ -35,16 +35,14 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
 import numpy as np
 from osgeo import gdal
 from osgeo import osr
-import time
-import statistics 
 from scipy import interpolate
 
 
 #-------------------------------
 #File einlesen:
 #-------------------------------
-fobj = open('Daten/Waldpunktwolke.txt', "r") #Input File
-InputSize = "full"
+fobj = open('Daten/Waldpunktwolke_1000.txt', "r") #Input File
+InputSize = "1000"
 
 pointlist = []
 
